@@ -1,7 +1,7 @@
-import 'package:_5000_image_loading/provider/image_repository_provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:_5000_image_loading/provider/page_provider.dart';
 
 
 const List<Color> _accentPalette = [
@@ -17,37 +17,68 @@ const List<Color> _accentPalette = [
 const Color _screenBackground = Color(0xFFF6F5FB);
 const Color _cardBackground = Colors.white;
 
-class PhotoListScreen extends ConsumerWidget {
+class PhotoListScreen extends ConsumerStatefulWidget {
   const PhotoListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final photosState = ref.watch(imageListNotifierProvider);
+  ConsumerState<PhotoListScreen> createState() => _PhotoListScreenState();
+}
+
+class _PhotoListScreenState extends ConsumerState<PhotoListScreen> {
+  late final ScrollController _scrollController;
+
+@override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.position.pixels;
+    if (maxScroll - currentScroll <= 300) {
+      ref.read(pageProvider.notifier).fetchNextPage();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pageState = ref.watch(pageProvider);
+    final photos = pageState.products;
 
     return Scaffold(
       backgroundColor: _screenBackground,
-      body: photosState.when(
-        data: (photos) {
-          return CustomScrollView(
-            cacheExtent: 200,
-            slivers: [
-              SliverAppBar(
-                expandedHeight: 200,
-                pinned: false,
-                elevation: 0,
-                backgroundColor: const Color(0xFF6C5CE7),
-                flexibleSpace: Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF6C5CE7),
-                        Color(0xFF9B7BFF),
-                        Color(0xFFB983FF),
-                      ],
-                    ),
-                  ),
+      body: CustomScrollView(
+        controller: _scrollController,
+        cacheExtent: 200,
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 200,
+            pinned: false,
+            elevation: 0,
+            backgroundColor: const Color(0xFF6C5CE7),
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color.fromARGB(255, 21, 6, 129),
+                    Color.fromARGB(255, 56, 73, 149),
+                    Color.fromARGB(255, 131, 156, 255),
+                  ],
+                ),
+              ),
                   child: FlexibleSpaceBar(
                     titlePadding:
                         const EdgeInsets.only(left: 20, bottom: 16),
@@ -90,8 +121,8 @@ class PhotoListScreen extends ConsumerWidget {
                   delegate: SliverChildBuilderDelegate(
                     (context, index) {
                       final photo = photos[index];
-                      const double cardWidth = 180;
-                      const double imageSize = 140;
+                      const double cardWidth = 300;
+                      const double imageSize = 300;
                       final imageDimension = imageSize.toInt();
                       final workingImageUrl =
                           'https://picsum.photos/seed/${photo.id}/$imageDimension/$imageDimension';
@@ -187,7 +218,6 @@ class PhotoListScreen extends ConsumerWidget {
                                   ),
                                 ],
                               ),
-                              // ---- Info below ----
                               Padding(
                                 padding:
                                     const EdgeInsets.fromLTRB(10, 8, 10, 10),
@@ -245,25 +275,11 @@ class PhotoListScreen extends ConsumerWidget {
                   ),
                 ),
               ),
-            ],
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: Color(0xFF6C5CE7)),
-        ),
-        error: (error, stack) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(
-              'Error: $error',
-              textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.redAccent),
-            ),
-          ),
-        ),
+        ]
       ),
     );
   }
+
 }
 
 class _DecorativeCircle extends StatelessWidget {
