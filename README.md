@@ -1,17 +1,53 @@
-# _5000_image_loading
+## the following is comparing between three cases 
+1. ListView Builder
+2. Sliver
+3. Sliver with cached network image and cache extent
 
-A new Flutter project.
+** note: the average FPS is taken after scrolling through approximately 1000 element in a steady pace
 
-## Getting Started
+## ListView Builder:
+general time:
+![list_view](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/listview-general.png)
 
-This project is a starting point for a Flutter application.
+average FPS: 57 ,
+higher janks number
 
-A few resources to get you started if this is your first Flutter project:
+worst case:
+![list_view_worst_case](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/listview-worst-case.png)
+UI time: 1.9ms ,
+raster time: 82.0ms ,
+total frame time: 83.9ms
+-------------
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+## Sliver:
+general time:
+![list_view](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-general.png)
+
+average FPS: 56
+lower janks number
+
+worst case:
+![list_view_worst_case](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-worst-case.png)
+UI time: 5.1ms ,
+raster time: 32.7ms ,
+total frame time: 37.8ms ,
+-------------
+
+
+---
+##  Sliver with cached network image and cache extent :
+general time:
+![list_view](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-with-cached-image-newtwork-general.png)
+
+average FPS: 58-59
+lowest janks number
+
+worst case:
+![list_view_worst_case](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-with-chached-netwrok-worst-case.png)
+UI time:< 0.2ms ,
+raster time: 36.7ms ,
+total frame time: ~ 37.9ms ,
+-------------
+
