@@ -1,53 +1,42 @@
-## the following is comparing between three cases 
-1. ListView Builder
-2. Sliver
-3. Sliver with cached network image and cache extent
+# DevTools Memory Leak Investigation & Performance Optimization Report
 
-** note: the average FPS is taken after scrolling through approximately 1000 element in a steady pace
-
-## ListView Builder:
-general time:
-![list_view](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/listview-general.png)
-
-average FPS: 57 ,
-higher janks number
-
-worst case:
-![list_view_worst_case](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/listview-worst-case.png)
-UI time: 1.9ms ,
-raster time: 82.0ms ,
-total frame time: 83.9ms
--------------
-
+**Author:** Marah Naser  
+**Branch Comparison:** [View Side-by-Side Code Diff](https://github.com/YOUR_USERNAME/YOUR_REPO/compare/feature/optimized-performance...bad-performance)
 
 ---
-## Sliver:
-general time:
-![list_view](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-general.png)
 
-average FPS: 56
-lower janks number
+## 📌 Executive Summary & Comparative Metrics
 
-worst case:
-![list_view_worst_case](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-worst-case.png)
-UI time: 5.1ms ,
-raster time: 32.7ms ,
-total frame time: 37.8ms ,
--------------
+Over a standardized 60-second profile test, the baseline application (`BadScreen`) was evaluated against the refactored version (`OptimizedScreen`). All memory leaks, retained route instances, and dynamic layout constraints were resolved in the optimized build.
 
+| Metric | BEFORE (`BadScreen`) | AFTER (`OptimizedScreen`) | Delta / Technical Notes |
+| :--- | :--- | :--- | :--- |
+| **Retained Screen Instances** | **13 instances** (`_BadScreenState`) | **1 instance** (`_OptimizedScreenState`) | **12 Leaked Instances Cleared** |
+| **Post-GC Heap Memory** | [ e.g., 85 MB ] | [ e.g., 42 MB ] | [ -43 MB / Cleaned retainers ] |
+| **Peak Heap Allocation** | [ e.g., 310 MB ] | [ e.g., 120 MB ] | Unconstrained bitmap decoding fixed |
+| **Average Frame Time** | [ e.g., 11.2 ms ] | [ e.g., 10.8 ms ] | [ Measured in profile mode ] |
+| **Average UI Time** | [ e.g., 6.4 ms ] | [ e.g., 6.1 ms ] | [ Measured in profile mode ] |
+| **Average Raster Time** | [ e.g., 4.8 ms ] | [ e.g., 4.7 ms ] | [ Measured in profile mode ] |
+| **Jank Percentage (%)** | [ e.g., 4.2 % ] | [ e.g., 1.8 % ] | [ Reduced frame drops ] |
+| **Cold Startup Time** | [ e.g., 450 ms ] | [ e.g., 310 ms ] | `firstFrameRasterizedMicros` / 1000 |
+| **Release Application Size** | [ e.g., 18.4 MB ] | [ e.g., 12.1 MB ] | Icon tree-shaking & ABI split |
 
 ---
-##  Sliver with cached network image and cache extent :
-general time:
-![list_view](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-with-cached-image-newtwork-general.png)
 
-average FPS: 58-59
-lowest janks number
+## 🔍 1. Memory Profiling & Leak Analysis
 
-worst case:
-![list_view_worst_case](https://github.com/Marah31/_5000_image_loading/blob/main/flutter-5k-image-comparison/sliver-with-chached-netwrok-worst-case.png)
-UI time:< 0.2ms ,
-raster time: 36.7ms ,
-total frame time: ~ 37.9ms ,
--------------
+### Reproduction Steps
+1. Launched application in profile mode (`flutter run -d linux --profile`).
+2. Navigated sequentially across 20 screens (`BadScreen`).
+3. Popped back to the home route (Screen 1).
+4. Triggered manual Garbage Collection (GC) via Flutter DevTools Memory tab.
 
+### Heap Snapshot Diagnostics
+Following manual GC, the Memory Inspector confirmed that 12 unmounted screen states remained trapped in memory instead of being reclaimed by the Garbage Collector.
+
+* **Target Leaked Class:** `_BadScreenState` (13 instances remaining post-GC; expected 1 active instance).
+* **Root Cause:** Active periodic timers (`Timer.periodic`), unclosed `StreamController` subscriptions, and an undisposed `ScrollController` listener retained strong references to unmounted route state contexts.
+
+### Retainer Path Trace (DevTools Snapshot)
+```text
+Isolate → _TimerHeap → _List → _Timer → _Closure → Context → _BadScreenState
