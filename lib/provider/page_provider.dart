@@ -21,10 +21,8 @@ class PageNotifier extends Notifier<PageEntity> {
     try {
       final repository = ref.read(imageRepositoryProvider);
       
-      // Fetch photos from repository
       final allPhotos = await repository.fetchPhotos();
 
-      // Paginate locally (skip & take) based on state.page
       final startIndex = (state.page - 1) * _limit;
       if (startIndex >= allPhotos.length) {
         state = state.copyWith(isLoadingMore: false, hasMore: false);

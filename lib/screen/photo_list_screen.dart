@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:_5000_image_loading/provider/page_provider.dart';
 
-
 const List<Color> _accentPalette = [
   Color(0xFFFF6B6B), 
   Color(0xFFFFA94D), 
