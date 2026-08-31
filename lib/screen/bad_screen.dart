@@ -4,102 +4,81 @@ import 'package:_5000_image_loading/performance_monitor.dart';
 import 'package:flutter/material.dart';
 import 'package:_5000_image_loading/domain/entity/image_entity.dart';
 
-class BadScreen extends StatefulWidget {
+class OptimizedScreen extends StatefulWidget {
   final int screenNumber;
   final List<ImageEntity> photos;
 
-  const BadScreen({
+  const OptimizedScreen({
     super.key,
     required this.screenNumber,
     required this.photos,
   });
 
   @override
-  State<BadScreen> createState() => _BadScreenState();
+  State<OptimizedScreen> createState() => _OptimizedScreenState();
 }
 
-class _BadScreenState extends State<BadScreen> {
-  late ScrollController _scrollController;
-
+class _OptimizedScreenState extends State<OptimizedScreen> {
+  late final ScrollController _scrollController;
   Timer? _timer;
-
+  Timer? _streamEventTimer;
   StreamController<String>? _streamController;
 
   StreamSubscription<String>? _subscription;
-
-  // This list intentionally holds references to objects from the screen.
-  final List<String> _largeData = [];
 
   @override
   void initState() {
     super.initState();
 
-    // BAD #1: ScrollController is created but will not be disposed
-
     _scrollController = ScrollController();
-
-    // BAD #2: Listener is added but will not be removed
-
-    _scrollController.addListener(() {
-      if (_scrollController.hasClients) {
-        print(
-          'Screen ${widget.screenNumber}: '
-          '${_scrollController.position.pixels}',
-        );
-      }
-    });
-
-    // BAD #3: Periodic timer will not be cancelled
-
+    _scrollController.addListener(_onScroll);
     _timer = Timer.periodic(
       const Duration(seconds: 1),
       (_) {
-        // print(
-        //   'BAD TIMER STILL RUNNING - '
-        //   'Screen ${widget.screenNumber}',
-        // );
       },
     );
-
-    // BAD #4: Stream subscription will not be cancelled
-
     _streamController = StreamController<String>();
 
     _subscription = _streamController!.stream.listen(
       (message) {
-        // print(
-        //   'BAD STREAM STILL RUNNING - '
-        //   'Screen ${widget.screenNumber}: $message',
-        // );
+        print(
+          'STREAM RUNNING - '
+          'Screen ${widget.screenNumber}: $message',
+        );
       },
     );
 
-    // BAD #5: Keep unnecessary data alive
-
-    for (int i = 0; i < 10000; i++) {
-      _largeData.add(
-        'Screen ${widget.screenNumber} - '
-        'This is unnecessary data that stays in memory - $i',
-      );
-    }
-
-    // Start producing stream events.
-    Timer.periodic(
+    _streamEventTimer = Timer.periodic(
       const Duration(milliseconds: 500),
       (_) {
-        _streamController?.add(
-          'Event from screen ${widget.screenNumber}',
-        );
+        if (_streamController != null && !_streamController!.isClosed) {
+          _streamController?.add(
+            'Event from screen ${widget.screenNumber}',
+          );
+        }
       },
     );
   }
 
+  void _onScroll() {
+    if (_scrollController.hasClients) {
+      print(
+          'Screen ${widget.screenNumber}: '
+          '${_scrollController.position.pixels}',
+        );
+    }
+  }
+
   @override
   void dispose() {
-    print(
-      'DISPOSING SCREEN ${widget.screenNumber} '
-      '(but resources are intentionally NOT cleaned up)',
-    );
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+
+    _timer?.cancel();
+    _streamEventTimer?.cancel();
+
+    _subscription?.cancel();
+    _streamController?.close();
 
     super.dispose();
   }
@@ -109,21 +88,21 @@ class _BadScreenState extends State<BadScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-          'Bad Screen ${widget.screenNumber}',
+          'Optimized Screen ${widget.screenNumber}',
         ),
       ),
       body: CustomScrollView(
         controller: _scrollController,
-        cacheExtent: 1000,
+        cacheExtent: 500,
         slivers: [
           SliverToBoxAdapter(
-            child: Container(
+            child: Padding(
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bad Screen ${widget.screenNumber}',
+                    'Optimized Screen ${widget.screenNumber}',
                     style: const TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
@@ -133,8 +112,7 @@ class _BadScreenState extends State<BadScreen> {
                   const SizedBox(height: 10),
 
                   const Text(
-                    'This screen intentionally contains '
-                    'memory/performance problems for the DevTools experiment.',
+                    'this screen cleanly disposes all resources',
                   ),
 
                   const SizedBox(height: 20),
@@ -143,36 +121,30 @@ class _BadScreenState extends State<BadScreen> {
                     'Photos: ${widget.photos.length}',
                   ),
 
-                  Text(
-                    'Artificial data entries: ${_largeData.length}',
-                  ),
-
                   const SizedBox(height: 20),
                 ],
               ),
             ),
           ),
-
-          // BAD #6: Build a lot of relatively expensive widgets
-
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
                 final photo = widget.photos[index];
-
-                // Intentionally use a relatively large image.
                 final imageUrl =
                     'https://picsum.photos/seed/'
                     '${photo.id}/800/800';
 
-                return Container(
+                return RepaintBoundary(
+                  child: Container(
                   margin: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
+                    color: Theme.of(context).cardColor,
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: const [
                       BoxShadow(
                         blurRadius: 15,
                         spreadRadius: 3,
+                        color: Colors.black12
                       ),
                     ],
                   ),
@@ -182,18 +154,14 @@ class _BadScreenState extends State<BadScreen> {
                       children: [
                         Image.network(
                           imageUrl,
-                          width: 800,
-                          height: 800,
-
-                          // Intentionally not constraining decoded
-                          // image memory to display size.
+                          width: double.infinity,
+                          height: 250,
                           fit: BoxFit.cover,
 
                           errorBuilder:
                               (context, error, stackTrace) {
                             return const SizedBox(
-                              width: 800,
-                              height: 800,
+                              height: 250,
                               child: Center(
                                 child: Icon(
                                   Icons.error,
@@ -217,6 +185,7 @@ class _BadScreenState extends State<BadScreen> {
                         ),
                       ],
                     ),
+                    )
                   ),
                 );
               },
@@ -235,4 +204,3 @@ class _BadScreenState extends State<BadScreen> {
     );
   }
 }
-
