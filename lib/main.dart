@@ -73,7 +73,7 @@ class BadExperimentHome extends ConsumerWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => BadScreen(
+                        builder: (_) => OptimizedScreen(
                           screenNumber: index + 1,
                           photos: photos,
                         ),
